@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Visa Requirement Explorer — Where Can My Passport Take Me?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flag-icons/7.2.3/css/flag-icons.min.css" />
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark">🌍</span>
+    <div>
+      <h1>Visa Requirement Explorer</h1>
+      <p>Pick your passport, see the whole world light up.</p>
+    </div>
+  </div>
+  <div class="selected-passport" id="selectedPassportBadge" hidden>
+    <span class="fi" id="selectedFlag"></span>
+    <span id="selectedName"></span>
+    <button id="clearPassport" title="Clear selection" aria-label="Clear selection">✕</button>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="sidebar">
+    <label for="countrySearch" class="sidebar-label">Your passport / nationality</label>
+    <div class="search-box">
+      <input type="text" id="countrySearch" placeholder="Search countries…" autocomplete="off" />
+      <button id="clearSearch" class="clear-search" title="Clear search" aria-label="Clear search" hidden>✕</button>
+    </div>
+    <ul id="countryList" class="country-list"></ul>
+  </aside>
+
+  <section class="map-area">
+    <div class="map-toolbar">
+      <button id="zoomIn" title="Zoom in">+</button>
+      <button id="zoomOut" title="Zoom out">−</button>
+      <button id="zoomReset" title="Reset view">⤾</button>
+      <button id="fullReset" class="full-reset" title="Reset map and passport selection">↺</button>
+    </div>
+
+    <div id="mapEmptyState" class="map-empty-state">
+      <p>Select a passport on the left to color the map by visa requirement.</p>
+    </div>
+
+    <svg id="map" viewBox="0 0 960 520" preserveAspectRatio="xMidYMid meet"></svg>
+
+    <div id="tooltip" class="tooltip" hidden></div>
+
+    <div class="legend" id="legend"></div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <p>
+    Visa requirement data from the open-source
+    <a href="https://github.com/ilyankou/passport-index-dataset" target="_blank" rel="noopener">passport-index-dataset</a>
+    (community-maintained, not an official government source). Always verify with an embassy or official
+    government source before you travel — requirements change frequently.
+  </p>
+</footer>
+
+<script src="data/countries.js"></script>
+<script src="data/visa-matrix.js"></script>
+<script src="data/world-topo.js"></script>
+<script src="data/topo-map.js"></script>
+<script src="data/territory-map.js"></script>
+<script src="data/capitals.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3"></script>
+<script src="app.js"></script>
+</body>
+</html>
