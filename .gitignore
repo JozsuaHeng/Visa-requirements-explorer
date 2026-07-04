@@ -1,0 +1,17 @@
+# macOS clutter
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+.Spotlight-V100
+.Trashes
+
+# Windows clutter (harmless to keep even though this is a Mac project)
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Editor/temp files
+*.swp
+*.swo
+*~
