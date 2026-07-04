@@ -184,24 +184,44 @@
     return TOPO_ID_MAP[key] || null;
   }
 
+  // VISA_MATRIX stores each passport's rules grouped by category (not one object
+  // per destination) to keep the data file small: row.f = {destCode: days} for
+  // visa-free (days 0 means no specific limit given), row.a/t/e/r/n are plain
+  // arrays of destination codes for the other categories. The passport's own
+  // country is never stored — it's always "home" by definition.
+  function lookupVisa(passportCode, destCode) {
+    if (destCode === passportCode) return { cat: 'home' };
+    var row = VISA_MATRIX[passportCode];
+    if (!row) return null;
+    if (row.f && Object.prototype.hasOwnProperty.call(row.f, destCode)) {
+      var days = row.f[destCode];
+      return days ? { cat: 'visa_free', days: days } : { cat: 'visa_free' };
+    }
+    if (row.a && row.a.indexOf(destCode) !== -1) return { cat: 'visa_on_arrival' };
+    if (row.t && row.t.indexOf(destCode) !== -1) return { cat: 'eta' };
+    if (row.e && row.e.indexOf(destCode) !== -1) return { cat: 'e_visa' };
+    if (row.r && row.r.indexOf(destCode) !== -1) return { cat: 'visa_required' };
+    if (row.n && row.n.indexOf(destCode) !== -1) return { cat: 'no_admission' };
+    return null;
+  }
+
   function resolveEntry(feature) {
     if (!selectedCode) return null;
     var meta = featureMeta(feature);
     if (!meta || !meta.a2) return { cat: 'no_data' };
 
-    var row = VISA_MATRIX[selectedCode];
-    if (!row) return { cat: 'no_data' };
-
-    if (row[meta.a2]) {
-      return row[meta.a2];
-    }
+    var entry = lookupVisa(selectedCode, meta.a2);
+    if (entry) return entry;
 
     var sovereign = TERRITORY_SOVEREIGN[meta.a2];
-    if (sovereign && row[sovereign]) {
-      var entry = Object.assign({}, row[sovereign]);
-      entry.viaTerritory = true;
-      entry.sovereignName = CODE_TO_NAME[sovereign] || sovereign;
-      return entry;
+    if (sovereign) {
+      var sEntry = lookupVisa(selectedCode, sovereign);
+      if (sEntry) {
+        sEntry = Object.assign({}, sEntry);
+        sEntry.viaTerritory = true;
+        sEntry.sovereignName = CODE_TO_NAME[sovereign] || sovereign;
+        return sEntry;
+      }
     }
 
     return { cat: 'no_data' };
@@ -243,9 +263,7 @@
 
   function resolveEntryForCode(code) {
     if (!selectedCode) return null;
-    var row = VISA_MATRIX[selectedCode];
-    if (!row || !row[code]) return { cat: 'no_data' };
-    return row[code];
+    return lookupVisa(selectedCode, code) || { cat: 'no_data' };
   }
 
   function tooltipHTML(name, entry, extraHTML) {
@@ -368,10 +386,13 @@
     CATEGORY_ORDER.forEach(function (c) { counts[c] = 0; });
     var row = VISA_MATRIX[code];
     if (!row) return counts;
-    Object.keys(row).forEach(function (dest) {
-      var cat = row[dest].cat;
-      counts[cat] = (counts[cat] || 0) + 1;
-    });
+    counts.visa_free = Object.keys(row.f || {}).length;
+    counts.visa_on_arrival = (row.a || []).length;
+    counts.eta = (row.t || []).length;
+    counts.e_visa = (row.e || []).length;
+    counts.visa_required = (row.r || []).length;
+    counts.no_admission = (row.n || []).length;
+    counts.home = 1;
     return counts;
   }
 
