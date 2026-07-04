@@ -58,17 +58,27 @@
       if (q && c.name.toLowerCase().indexOf(q) === -1) return;
       shown++;
       var li = document.createElement('li');
-      li.dataset.code = c.code;
-      if (c.code === selectedCode) li.classList.add('selected');
+      li.setAttribute('role', 'presentation');
+
+      var btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'country-item';
+      btn.dataset.code = c.code;
+      btn.setAttribute('role', 'option');
+      var isSelected = c.code === selectedCode;
+      if (isSelected) btn.classList.add('selected');
+      btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
 
       var flag = document.createElement('span');
       flag.className = 'fi fi-' + c.code.toLowerCase();
-      li.appendChild(flag);
+      flag.setAttribute('aria-hidden', 'true');
+      btn.appendChild(flag);
 
       var label = document.createElement('span');
       label.textContent = c.name;
-      li.appendChild(label);
+      btn.appendChild(label);
 
+      li.appendChild(btn);
       frag.appendChild(li);
     });
 
@@ -84,9 +94,9 @@
   }
 
   listEl.addEventListener('click', function (e) {
-    var li = e.target.closest('li[data-code]');
-    if (!li) return;
-    selectPassport(li.dataset.code);
+    var btn = e.target.closest('button[data-code]');
+    if (!btn) return;
+    selectPassport(btn.dataset.code);
   });
 
   searchEl.addEventListener('input', function () {

@@ -9,12 +9,12 @@
   --text-mid: #5b6478;
 
   --c-home: #94a3b8;
-  --c-visa-free: #16a34a;
-  --c-visa-on-arrival: #65a30d;
-  --c-eta: #0891b2;
-  --c-e-visa: #d97706;
-  --c-visa-required: #dc2626;
-  --c-no-admission: #1f2937;
+  --c-visa-free: #008300;
+  --c-visa-on-arrival: #1baf7a;
+  --c-eta: #2a78d6;
+  --c-e-visa: #eda100;
+  --c-visa-required: #e87ba4;
+  --c-no-admission: #e34948;
   --c-no-data: #d7dce5;
 }
 
@@ -163,22 +163,34 @@ body {
   border-top: 1px solid var(--border);
 }
 
-.country-list li {
+.country-list button.country-item {
   display: flex;
   align-items: center;
   gap: 0.6rem;
+  width: 100%;
   padding: 0.55rem 0.5rem;
   cursor: pointer;
   border-radius: 6px;
   font-size: 0.92rem;
+  font-family: inherit;
+  border: none;
   border-bottom: 1px solid #f0f2f6;
+  background: none;
+  text-align: left;
+  color: inherit;
 }
 
-.country-list li:hover { background: #eef2fb; }
+.country-list button.country-item:hover { background: #eef2fb; }
 
-.country-list li.selected {
+.country-list button.country-item.selected {
   background: var(--accent);
   color: white;
+}
+
+.country-list button.country-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: #eef2fb;
 }
 
 .country-list .fi {
