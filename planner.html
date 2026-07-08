@@ -25,30 +25,27 @@
 
 <div class="planner-controls">
   <div class="control-field">
-    <label for="passportSelect">Passport</label>
-    <div class="select-with-flag">
+    <label for="passportInput">Passport</label>
+    <div class="searchable-select" id="passportControl">
       <span class="fi control-flag" id="passportFlag" aria-hidden="true"></span>
-      <select id="passportSelect">
-        <option value="">Select your passport…</option>
-      </select>
+      <input type="text" id="passportInput" placeholder="Select your passport…" autocomplete="off" />
+      <ul class="searchable-list" id="passportList" role="listbox" hidden></ul>
     </div>
   </div>
   <div class="control-field">
-    <label for="locationSelect">Location <span class="control-hint">(informational only, for now)</span></label>
-    <div class="select-with-flag">
+    <label for="locationInput">Location <span class="control-hint">(informational only, for now)</span></label>
+    <div class="searchable-select" id="locationControl">
       <span class="fi control-flag" id="locationFlag" aria-hidden="true"></span>
-      <select id="locationSelect">
-        <option value="">Same as passport</option>
-      </select>
+      <input type="text" id="locationInput" placeholder="Same as passport" autocomplete="off" />
+      <ul class="searchable-list" id="locationList" role="listbox" hidden></ul>
     </div>
   </div>
   <div class="control-field">
-    <label for="destinationSelect">Destination</label>
-    <div class="select-with-flag">
+    <label for="destinationInput">Destination</label>
+    <div class="searchable-select" id="destinationControl">
       <span class="fi control-flag" id="destinationFlag" aria-hidden="true"></span>
-      <select id="destinationSelect">
-        <option value="">Search or pick on the map…</option>
-      </select>
+      <input type="text" id="destinationInput" placeholder="Search or pick on the map…" autocomplete="off" />
+      <ul class="searchable-list" id="destinationList" role="listbox" hidden></ul>
     </div>
   </div>
 </div>

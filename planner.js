@@ -42,55 +42,143 @@
   var locationManuallySet = false;
   var destinationCode = null;
 
-  // ── Controls: three selects ─────────────────────────────────
-  var passportSelect = document.getElementById('passportSelect');
-  var locationSelect = document.getElementById('locationSelect');
-  var destinationSelect = document.getElementById('destinationSelect');
-  var passportFlag = document.getElementById('passportFlag');
-  var locationFlag = document.getElementById('locationFlag');
-  var destinationFlag = document.getElementById('destinationFlag');
+  // ── Controls: three searchable comboboxes ────────────────────
+  // Native <select> options can't show icons and (worse) typing to jump to a
+  // country only matches its very first character, which broke once we tried
+  // prefixing option text with a flag. A small custom combobox (text input +
+  // filtered dropdown list) fixes both: real flag-icons graphics, and
+  // starts-with filtering across the whole country name as you type.
   var emptyStateEl = document.getElementById('mapEmptyState');
 
-  // Native <select> options can only show plain text — no icons/images — so
-  // flags in the dropdown list itself have to be flag emoji (built from ISO
-  // alpha-2 codes via the regional-indicator-symbol trick below). The crisp
-  // flag-icons library graphics are used everywhere else (the little preview
-  // badge beside each select, and the detail card) where real HTML is allowed.
-  function flagEmoji(code) {
-    return code.toUpperCase().replace(/./g, function (ch) {
-      return String.fromCodePoint(127397 + ch.charCodeAt(0));
+  function createSearchableSelect(prefix, onSelect) {
+    var root = document.getElementById(prefix + 'Control');
+    var input = document.getElementById(prefix + 'Input');
+    var list = document.getElementById(prefix + 'List');
+    var flagEl = document.getElementById(prefix + 'Flag');
+    var activeIndex = -1;
+    var currentMatches = [];
+
+    function setFlag(code) {
+      flagEl.className = code ? 'fi control-flag fi-' + code.toLowerCase() : 'fi control-flag';
+    }
+
+    function render(filter) {
+      var q = (filter || '').trim().toLowerCase();
+      currentMatches = q
+        ? COUNTRIES.filter(function (c) { return c.name.toLowerCase().indexOf(q) === 0; })
+        : COUNTRIES;
+
+      list.innerHTML = '';
+      activeIndex = -1;
+
+      if (currentMatches.length === 0) {
+        var none = document.createElement('li');
+        none.className = 'no-results';
+        none.textContent = 'No countries match "' + filter + '"';
+        list.appendChild(none);
+        return;
+      }
+
+      var frag = document.createDocumentFragment();
+      currentMatches.forEach(function (c, i) {
+        var li = document.createElement('li');
+        li.setAttribute('role', 'option');
+        li.dataset.index = i;
+
+        var flag = document.createElement('span');
+        flag.className = 'fi fi-' + c.code.toLowerCase();
+        flag.setAttribute('aria-hidden', 'true');
+        li.appendChild(flag);
+
+        var label = document.createElement('span');
+        label.textContent = c.name;
+        li.appendChild(label);
+
+        li.addEventListener('mousedown', function (e) {
+          e.preventDefault(); // keep focus in the input, don't blur-close first
+          choose(c);
+        });
+
+        frag.appendChild(li);
+      });
+      list.appendChild(frag);
+    }
+
+    function setActive(i) {
+      var items = list.querySelectorAll('li[role="option"]');
+      items.forEach(function (li) { li.classList.remove('active'); });
+      if (i >= 0 && i < items.length) {
+        items[i].classList.add('active');
+        items[i].scrollIntoView({ block: 'nearest' });
+      }
+      activeIndex = i;
+    }
+
+    function open() {
+      render(input.value);
+      list.hidden = false;
+    }
+
+    function close() {
+      list.hidden = true;
+      activeIndex = -1;
+    }
+
+    function choose(country) {
+      input.value = country.name;
+      setFlag(country.code);
+      close();
+      onSelect(country.code);
+    }
+
+    function clear() {
+      input.value = '';
+      setFlag(null);
+      close();
+    }
+
+    // Sets the control's value programmatically (e.g. syncing Location to
+    // match Passport, or a map click choosing a Destination) without
+    // re-triggering onSelect — the caller already knows and is handling it.
+    function setValue(code) {
+      var name = CODE_TO_NAME[code];
+      input.value = name || '';
+      setFlag(code || null);
+    }
+
+    input.addEventListener('focus', open);
+    input.addEventListener('input', function () {
+      setFlag(null);
+      open();
     });
-  }
-
-  function setControlFlag(flagEl, code) {
-    flagEl.className = code ? 'fi control-flag fi-' + code.toLowerCase() : 'fi control-flag';
-  }
-
-  // Appends a country <option> per entry in COUNTRIES. destinationSelect
-  // already has its placeholder option first in the HTML, so this just adds
-  // after it; passport/location selects start empty and get the same list.
-  function populateSelect(select) {
-    var frag = document.createDocumentFragment();
-    COUNTRIES.forEach(function (c) {
-      var opt = document.createElement('option');
-      opt.value = c.code;
-      opt.textContent = flagEmoji(c.code) + ' ' + c.name;
-      frag.appendChild(opt);
+    input.addEventListener('keydown', function (e) {
+      if (list.hidden && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { open(); return; }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setActive(Math.min(activeIndex + 1, currentMatches.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActive(Math.max(activeIndex - 1, 0));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        var pick = currentMatches[activeIndex >= 0 ? activeIndex : 0];
+        if (pick) choose(pick);
+      } else if (e.key === 'Escape') {
+        close();
+      }
     });
-    select.appendChild(frag);
+    document.addEventListener('click', function (e) {
+      if (!root.contains(e.target)) close();
+    });
+
+    return { setValue: setValue, clear: clear };
   }
 
-  populateSelect(passportSelect);
-  populateSelect(locationSelect);
-  populateSelect(destinationSelect);
-
-  passportSelect.addEventListener('change', function () {
-    passportCode = passportSelect.value || null;
-    setControlFlag(passportFlag, passportCode);
+  var passportControl = createSearchableSelect('passport', function (code) {
+    passportCode = code;
     if (!locationManuallySet) {
-      locationSelect.value = passportCode || '';
-      locationCode = passportCode;
-      setControlFlag(locationFlag, locationCode);
+      locationCode = code;
+      locationControl.setValue(code);
     }
     recolorMap();
     renderLegend();
@@ -98,17 +186,15 @@
     updateEmptyState();
   });
 
-  locationSelect.addEventListener('change', function () {
+  var locationControl = createSearchableSelect('location', function (code) {
     locationManuallySet = true;
-    locationCode = locationSelect.value || null;
-    setControlFlag(locationFlag, locationCode);
+    locationCode = code;
     // Display-only for now: our data has no location-based rules, so this
     // doesn't change anything else. See the footer note on the page.
   });
 
-  destinationSelect.addEventListener('change', function () {
-    var code = destinationSelect.value || null;
-    if (code) selectDestination(code); else clearDestination();
+  var destinationControl = createSearchableSelect('destination', function (code) {
+    selectDestination(code);
   });
 
   function updateEmptyState() {
@@ -295,24 +381,15 @@
 
   function selectDestination(code) {
     destinationCode = code;
-    destinationSelect.value = code;
-    setControlFlag(destinationFlag, code);
+    destinationControl.setValue(code);
     updateHighlight();
     showDetailFor(code);
   }
 
-  function clearDestination() {
-    destinationCode = null;
-    setControlFlag(destinationFlag, null);
-    updateHighlight();
-    detailCard.hidden = true;
-  }
-
   detailCardClose.addEventListener('click', function () {
     detailCard.hidden = true;
-    destinationSelect.value = '';
     destinationCode = null;
-    setControlFlag(destinationFlag, null);
+    destinationControl.clear();
     updateHighlight();
   });
 

@@ -33,7 +33,7 @@
   color: #9aa3b2;
 }
 
-.select-with-flag {
+.searchable-select {
   position: relative;
   display: flex;
   align-items: center;
@@ -48,9 +48,10 @@
   box-shadow: 0 0 0 1px rgba(0,0,0,0.08);
   flex-shrink: 0;
   background-color: #e5e9f0;
+  z-index: 1;
 }
 
-.control-field select {
+.searchable-select input {
   width: 100%;
   padding: 0.55rem 0.7rem 0.55rem 2.15rem;
   border: 1px solid var(--border);
@@ -61,11 +62,52 @@
   color: var(--text-dark);
 }
 
-.control-field select:focus {
+.searchable-select input:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: 0 0 0 3px rgba(47,111,237,0.15);
 }
+
+.searchable-list {
+  position: absolute;
+  top: calc(100% + 0.3rem);
+  left: 0;
+  right: 0;
+  max-height: 260px;
+  overflow-y: auto;
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+  list-style: none;
+  z-index: 20;
+}
+
+.searchable-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.5rem 0.7rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+}
+
+.searchable-list li .fi {
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.08);
+  flex-shrink: 0;
+}
+
+.searchable-list li:hover,
+.searchable-list li.active {
+  background: #eef2fb;
+}
+
+.searchable-list li.no-results {
+  color: var(--text-mid);
+  cursor: default;
+}
+.searchable-list li.no-results:hover { background: none; }
 
 .planner-main {
   height: calc(100vh - 168px);
