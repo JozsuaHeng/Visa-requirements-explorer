@@ -46,7 +46,25 @@
   var passportSelect = document.getElementById('passportSelect');
   var locationSelect = document.getElementById('locationSelect');
   var destinationSelect = document.getElementById('destinationSelect');
+  var passportFlag = document.getElementById('passportFlag');
+  var locationFlag = document.getElementById('locationFlag');
+  var destinationFlag = document.getElementById('destinationFlag');
   var emptyStateEl = document.getElementById('mapEmptyState');
+
+  // Native <select> options can only show plain text — no icons/images — so
+  // flags in the dropdown list itself have to be flag emoji (built from ISO
+  // alpha-2 codes via the regional-indicator-symbol trick below). The crisp
+  // flag-icons library graphics are used everywhere else (the little preview
+  // badge beside each select, and the detail card) where real HTML is allowed.
+  function flagEmoji(code) {
+    return code.toUpperCase().replace(/./g, function (ch) {
+      return String.fromCodePoint(127397 + ch.charCodeAt(0));
+    });
+  }
+
+  function setControlFlag(flagEl, code) {
+    flagEl.className = code ? 'fi control-flag fi-' + code.toLowerCase() : 'fi control-flag';
+  }
 
   // Appends a country <option> per entry in COUNTRIES. destinationSelect
   // already has its placeholder option first in the HTML, so this just adds
@@ -56,7 +74,7 @@
     COUNTRIES.forEach(function (c) {
       var opt = document.createElement('option');
       opt.value = c.code;
-      opt.textContent = c.name;
+      opt.textContent = flagEmoji(c.code) + ' ' + c.name;
       frag.appendChild(opt);
     });
     select.appendChild(frag);
@@ -68,9 +86,11 @@
 
   passportSelect.addEventListener('change', function () {
     passportCode = passportSelect.value || null;
+    setControlFlag(passportFlag, passportCode);
     if (!locationManuallySet) {
       locationSelect.value = passportCode || '';
       locationCode = passportCode;
+      setControlFlag(locationFlag, locationCode);
     }
     recolorMap();
     renderLegend();
@@ -81,6 +101,7 @@
   locationSelect.addEventListener('change', function () {
     locationManuallySet = true;
     locationCode = locationSelect.value || null;
+    setControlFlag(locationFlag, locationCode);
     // Display-only for now: our data has no location-based rules, so this
     // doesn't change anything else. See the footer note on the page.
   });
@@ -275,12 +296,14 @@
   function selectDestination(code) {
     destinationCode = code;
     destinationSelect.value = code;
+    setControlFlag(destinationFlag, code);
     updateHighlight();
     showDetailFor(code);
   }
 
   function clearDestination() {
     destinationCode = null;
+    setControlFlag(destinationFlag, null);
     updateHighlight();
     detailCard.hidden = true;
   }
@@ -289,8 +312,13 @@
     detailCard.hidden = true;
     destinationSelect.value = '';
     destinationCode = null;
+    setControlFlag(destinationFlag, null);
     updateHighlight();
   });
+
+  function flagSpan(code) {
+    return '<span class="fi fi-' + code.toLowerCase() + '" aria-hidden="true"></span>';
+  }
 
   function showDetailFor(destCode) {
     if (!passportCode) return;
@@ -298,7 +326,8 @@
     var passportName = CODE_TO_NAME[passportCode] || passportCode;
     var entry = lookupVisa(passportCode, destCode) || { cat: 'no_data' };
 
-    detailCardTitle.textContent = passportName + ' → ' + destName;
+    detailCardTitle.innerHTML = flagSpan(passportCode) + ' ' + passportName +
+      ' → ' + flagSpan(destCode) + ' ' + destName;
 
     var label = CATEGORY_LABEL[entry.cat] || CATEGORY_LABEL.no_data;
     var html = '<div class="detail-category">' + label + '</div>';

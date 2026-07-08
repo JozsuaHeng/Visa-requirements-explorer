@@ -26,21 +26,30 @@
 <div class="planner-controls">
   <div class="control-field">
     <label for="passportSelect">Passport</label>
-    <select id="passportSelect">
-      <option value="">Select your passport…</option>
-    </select>
+    <div class="select-with-flag">
+      <span class="fi control-flag" id="passportFlag" aria-hidden="true"></span>
+      <select id="passportSelect">
+        <option value="">Select your passport…</option>
+      </select>
+    </div>
   </div>
   <div class="control-field">
     <label for="locationSelect">Location <span class="control-hint">(informational only, for now)</span></label>
-    <select id="locationSelect">
-      <option value="">Same as passport</option>
-    </select>
+    <div class="select-with-flag">
+      <span class="fi control-flag" id="locationFlag" aria-hidden="true"></span>
+      <select id="locationSelect">
+        <option value="">Same as passport</option>
+      </select>
+    </div>
   </div>
   <div class="control-field">
     <label for="destinationSelect">Destination</label>
-    <select id="destinationSelect">
-      <option value="">Search or pick on the map…</option>
-    </select>
+    <div class="select-with-flag">
+      <span class="fi control-flag" id="destinationFlag" aria-hidden="true"></span>
+      <select id="destinationSelect">
+        <option value="">Search or pick on the map…</option>
+      </select>
+    </div>
   </div>
 </div>
 
