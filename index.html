@@ -17,36 +17,48 @@
     <span class="brand-mark">🌍</span>
     <div>
       <h1>Visa Requirement Explorer</h1>
-      <p>Pick your passport, see the whole world light up.</p>
+      <p>Pick your passport and destination to see what you need to travel.</p>
     </div>
-  </div>
-  <div class="selected-passport" id="selectedPassportBadge" hidden>
-    <span class="fi" id="selectedFlag"></span>
-    <span id="selectedName"></span>
-    <button id="clearPassport" title="Clear selection" aria-label="Clear selection">✕</button>
   </div>
 </header>
 
-<main class="layout">
-  <aside class="sidebar">
-    <label for="countrySearch" class="sidebar-label">Your passport / nationality</label>
-    <div class="search-box">
-      <input type="text" id="countrySearch" placeholder="Search countries…" autocomplete="off" />
-      <button id="clearSearch" class="clear-search" title="Clear search" aria-label="Clear search" hidden>✕</button>
+<div class="planner-controls">
+  <div class="control-field">
+    <label for="passportInput">Passport</label>
+    <div class="searchable-select" id="passportControl">
+      <span class="fi control-flag" id="passportFlag" aria-hidden="true"></span>
+      <input type="text" id="passportInput" placeholder="Select your passport…" autocomplete="off" />
+      <ul class="searchable-list" id="passportList" role="listbox" hidden></ul>
     </div>
-    <ul id="countryList" class="country-list" role="listbox" aria-label="Choose your passport country"></ul>
-  </aside>
+  </div>
+  <div class="control-field">
+    <label for="locationInput">Location <span class="control-hint">(informational only, for now)</span></label>
+    <div class="searchable-select" id="locationControl">
+      <span class="fi control-flag" id="locationFlag" aria-hidden="true"></span>
+      <input type="text" id="locationInput" placeholder="Same as passport" autocomplete="off" />
+      <ul class="searchable-list" id="locationList" role="listbox" hidden></ul>
+    </div>
+  </div>
+  <div class="control-field">
+    <label for="destinationInput">Destination</label>
+    <div class="searchable-select" id="destinationControl">
+      <span class="fi control-flag" id="destinationFlag" aria-hidden="true"></span>
+      <input type="text" id="destinationInput" placeholder="Search or pick on the map…" autocomplete="off" />
+      <ul class="searchable-list" id="destinationList" role="listbox" hidden></ul>
+    </div>
+  </div>
+</div>
 
+<main class="planner-main">
   <section class="map-area">
     <div class="map-toolbar">
       <button id="zoomIn" title="Zoom in">+</button>
       <button id="zoomOut" title="Zoom out">−</button>
       <button id="zoomReset" title="Reset view">⤾</button>
-      <button id="fullReset" class="full-reset" title="Reset map and passport selection">↺</button>
     </div>
 
     <div id="mapEmptyState" class="map-empty-state">
-      <p>Select a passport on the left to color the map by visa requirement.</p>
+      <p>Pick your passport, then click any country (or use the Destination list) to see requirements.</p>
     </div>
 
     <svg id="map" viewBox="0 0 960 520" preserveAspectRatio="xMidYMid meet"></svg>
@@ -54,6 +66,14 @@
     <div id="tooltip" class="tooltip" hidden></div>
 
     <div class="legend" id="legend"></div>
+
+    <div id="detailCard" class="detail-card" hidden>
+      <div class="detail-card-header">
+        <span id="detailCardTitle"></span>
+        <button id="detailCardClose" title="Close" aria-label="Close">✕</button>
+      </div>
+      <div class="detail-card-body" id="detailCardBody"></div>
+    </div>
   </section>
 </main>
 
@@ -61,7 +81,9 @@
   <p>
     Visa requirement data from the open-source
     <a href="https://github.com/ilyankou/passport-index-dataset" target="_blank" rel="noopener">passport-index-dataset</a>
-    (community-maintained, not an official government source). Always verify with an embassy or official
+    (community-maintained, not an official government source). The "Location" field doesn't change the
+    result yet — our data only models passport nationality, not physical location. "Search official source"
+    links open a web search, not a guaranteed government page. Always verify with an embassy or official
     government source before you travel — requirements change frequently.
   </p>
 </footer>

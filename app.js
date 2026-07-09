@@ -32,113 +32,173 @@
   };
 
   var NEUTRAL_FILL = '#cbd5e1';
-  var STORAGE_KEY = 'visa-map-selected-passport';
 
   var CODE_TO_NAME = {};
   COUNTRIES.forEach(function (c) { CODE_TO_NAME[c.code] = c.name; });
 
-  var selectedCode = null;
+  // ── State ───────────────────────────────────────────────────
+  var passportCode = null;
+  var locationCode = null;
+  var locationManuallySet = false;
+  var destinationCode = null;
 
-  // ── Sidebar: country list ──────────────────────────────────
-  var listEl = document.getElementById('countryList');
-  var searchEl = document.getElementById('countrySearch');
-  var badgeEl = document.getElementById('selectedPassportBadge');
-  var badgeFlag = document.getElementById('selectedFlag');
-  var badgeName = document.getElementById('selectedName');
-  var clearBtn = document.getElementById('clearPassport');
-  var clearSearchBtn = document.getElementById('clearSearch');
+  // ── Controls: three searchable comboboxes ────────────────────
+  // Native <select> options can't show icons and (worse) typing to jump to a
+  // country only matches its very first character, which broke once we tried
+  // prefixing option text with a flag. A small custom combobox (text input +
+  // filtered dropdown list) fixes both: real flag-icons graphics, and
+  // starts-with filtering across the whole country name as you type.
   var emptyStateEl = document.getElementById('mapEmptyState');
 
-  function renderCountryList(filter) {
-    var q = (filter || '').trim().toLowerCase();
-    var frag = document.createDocumentFragment();
-    var shown = 0;
+  function createSearchableSelect(prefix, onSelect) {
+    var root = document.getElementById(prefix + 'Control');
+    var input = document.getElementById(prefix + 'Input');
+    var list = document.getElementById(prefix + 'List');
+    var flagEl = document.getElementById(prefix + 'Flag');
+    var activeIndex = -1;
+    var currentMatches = [];
 
-    COUNTRIES.forEach(function (c) {
-      if (q && c.name.toLowerCase().indexOf(q) === -1) return;
-      shown++;
-      var li = document.createElement('li');
-      li.setAttribute('role', 'presentation');
+    function setFlag(code) {
+      flagEl.className = code ? 'fi control-flag fi-' + code.toLowerCase() : 'fi control-flag';
+    }
 
-      var btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'country-item';
-      btn.dataset.code = c.code;
-      btn.setAttribute('role', 'option');
-      var isSelected = c.code === selectedCode;
-      if (isSelected) btn.classList.add('selected');
-      btn.setAttribute('aria-selected', isSelected ? 'true' : 'false');
+    function render(filter) {
+      var q = (filter || '').trim().toLowerCase();
+      currentMatches = q
+        ? COUNTRIES.filter(function (c) { return c.name.toLowerCase().indexOf(q) === 0; })
+        : COUNTRIES;
 
-      var flag = document.createElement('span');
-      flag.className = 'fi fi-' + c.code.toLowerCase();
-      flag.setAttribute('aria-hidden', 'true');
-      btn.appendChild(flag);
+      list.innerHTML = '';
+      activeIndex = -1;
 
-      var label = document.createElement('span');
-      label.textContent = c.name;
-      btn.appendChild(label);
+      if (currentMatches.length === 0) {
+        var none = document.createElement('li');
+        none.className = 'no-results';
+        none.textContent = 'No countries match "' + filter + '"';
+        list.appendChild(none);
+        return;
+      }
 
-      li.appendChild(btn);
-      frag.appendChild(li);
+      var frag = document.createDocumentFragment();
+      currentMatches.forEach(function (c, i) {
+        var li = document.createElement('li');
+        li.setAttribute('role', 'option');
+        li.dataset.index = i;
+
+        var flag = document.createElement('span');
+        flag.className = 'fi fi-' + c.code.toLowerCase();
+        flag.setAttribute('aria-hidden', 'true');
+        li.appendChild(flag);
+
+        var label = document.createElement('span');
+        label.textContent = c.name;
+        li.appendChild(label);
+
+        li.addEventListener('mousedown', function (e) {
+          e.preventDefault(); // keep focus in the input, don't blur-close first
+          choose(c);
+        });
+
+        frag.appendChild(li);
+      });
+      list.appendChild(frag);
+    }
+
+    function setActive(i) {
+      var items = list.querySelectorAll('li[role="option"]');
+      items.forEach(function (li) { li.classList.remove('active'); });
+      if (i >= 0 && i < items.length) {
+        items[i].classList.add('active');
+        items[i].scrollIntoView({ block: 'nearest' });
+      }
+      activeIndex = i;
+    }
+
+    function open() {
+      render(input.value);
+      list.hidden = false;
+    }
+
+    function close() {
+      list.hidden = true;
+      activeIndex = -1;
+    }
+
+    function choose(country) {
+      input.value = country.name;
+      setFlag(country.code);
+      close();
+      onSelect(country.code);
+    }
+
+    function clear() {
+      input.value = '';
+      setFlag(null);
+      close();
+    }
+
+    // Sets the control's value programmatically (e.g. syncing Location to
+    // match Passport, or a map click choosing a Destination) without
+    // re-triggering onSelect — the caller already knows and is handling it.
+    function setValue(code) {
+      var name = CODE_TO_NAME[code];
+      input.value = name || '';
+      setFlag(code || null);
+    }
+
+    input.addEventListener('focus', open);
+    input.addEventListener('input', function () {
+      setFlag(null);
+      open();
+    });
+    input.addEventListener('keydown', function (e) {
+      if (list.hidden && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) { open(); return; }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setActive(Math.min(activeIndex + 1, currentMatches.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setActive(Math.max(activeIndex - 1, 0));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        var pick = currentMatches[activeIndex >= 0 ? activeIndex : 0];
+        if (pick) choose(pick);
+      } else if (e.key === 'Escape') {
+        close();
+      }
+    });
+    document.addEventListener('click', function (e) {
+      if (!root.contains(e.target)) close();
     });
 
-    if (shown === 0) {
-      var none = document.createElement('li');
-      none.className = 'no-results';
-      none.textContent = 'No countries match "' + filter + '"';
-      frag.appendChild(none);
-    }
-
-    listEl.innerHTML = '';
-    listEl.appendChild(frag);
+    return { setValue: setValue, clear: clear };
   }
 
-  listEl.addEventListener('click', function (e) {
-    var btn = e.target.closest('button[data-code]');
-    if (!btn) return;
-    selectPassport(btn.dataset.code);
-  });
-
-  searchEl.addEventListener('input', function () {
-    clearSearchBtn.hidden = searchEl.value.length === 0;
-    renderCountryList(searchEl.value);
-  });
-
-  clearSearchBtn.addEventListener('click', function () {
-    searchEl.value = '';
-    clearSearchBtn.hidden = true;
-    renderCountryList('');
-    searchEl.focus();
-  });
-
-  clearBtn.addEventListener('click', function () {
-    svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity);
-    searchEl.value = '';
-    clearSearchBtn.hidden = true;
-    renderCountryList('');
-    selectPassport(null);
-  });
-
-  function selectPassport(code) {
-    selectedCode = code;
-
-    if (code) {
-      localStorage.setItem(STORAGE_KEY, code);
-      history.replaceState(null, '', '#' + code);
-      badgeFlag.className = 'fi fi-' + code.toLowerCase();
-      badgeName.textContent = CODE_TO_NAME[code] || code;
-      badgeEl.hidden = false;
-      emptyStateEl.style.display = 'none';
-    } else {
-      localStorage.removeItem(STORAGE_KEY);
-      history.replaceState(null, '', location.pathname + location.search);
-      badgeEl.hidden = true;
-      emptyStateEl.style.display = 'flex';
+  var passportControl = createSearchableSelect('passport', function (code) {
+    passportCode = code;
+    if (!locationManuallySet) {
+      locationCode = code;
+      locationControl.setValue(code);
     }
-
-    renderCountryList(searchEl.value);
     recolorMap();
     renderLegend();
+    if (destinationCode) showDetailFor(destinationCode);
+    updateEmptyState();
+  });
+
+  var locationControl = createSearchableSelect('location', function (code) {
+    locationManuallySet = true;
+    locationCode = code;
+    // Display-only for now: our data has no location-based rules, so this
+    // doesn't change anything else. See the footer note on the page.
+  });
+
+  var destinationControl = createSearchableSelect('destination', function (code) {
+    selectDestination(code);
+  });
+
+  function updateEmptyState() {
+    emptyStateEl.style.display = passportCode ? 'none' : 'flex';
   }
 
   // ── Map ─────────────────────────────────────────────────────
@@ -184,14 +244,11 @@
     return TOPO_ID_MAP[key] || null;
   }
 
-  // VISA_MATRIX stores each passport's rules grouped by category (not one object
-  // per destination) to keep the data file small: row.f = {destCode: days} for
-  // visa-free (days 0 means no specific limit given), row.a/t/e/r/n are plain
-  // arrays of destination codes for the other categories. The passport's own
-  // country is never stored — it's always "home" by definition.
-  function lookupVisa(passportCode, destCode) {
-    if (destCode === passportCode) return { cat: 'home' };
-    var row = VISA_MATRIX[passportCode];
+  // Same compact-format lookup as the main site's app.js (see that file for
+  // the format rationale): row.f = {destCode: days}, row.a/t/e/r/n = arrays.
+  function lookupVisa(passport, destCode) {
+    if (destCode === passport) return { cat: 'home' };
+    var row = VISA_MATRIX[passport];
     if (!row) return null;
     if (row.f && Object.prototype.hasOwnProperty.call(row.f, destCode)) {
       var days = row.f[destCode];
@@ -205,17 +262,30 @@
     return null;
   }
 
+  // Resolves a map feature to a destination code that's actually one of our
+  // 199 passport/destination countries — following the territory-to-sovereign
+  // fallback (e.g. clicking Puerto Rico resolves to "US") since the selects
+  // and VISA_MATRIX only know about sovereign countries.
+  function destCodeForFeature(feature) {
+    var meta = featureMeta(feature);
+    if (!meta || !meta.a2) return null;
+    if (CODE_TO_NAME[meta.a2]) return meta.a2;
+    var sovereign = TERRITORY_SOVEREIGN[meta.a2];
+    if (sovereign && CODE_TO_NAME[sovereign]) return sovereign;
+    return null;
+  }
+
   function resolveEntry(feature) {
-    if (!selectedCode) return null;
+    if (!passportCode) return null;
     var meta = featureMeta(feature);
     if (!meta || !meta.a2) return { cat: 'no_data' };
 
-    var entry = lookupVisa(selectedCode, meta.a2);
+    var entry = lookupVisa(passportCode, meta.a2);
     if (entry) return entry;
 
     var sovereign = TERRITORY_SOVEREIGN[meta.a2];
     if (sovereign) {
-      var sEntry = lookupVisa(selectedCode, sovereign);
+      var sEntry = lookupVisa(passportCode, sovereign);
       if (sEntry) {
         sEntry = Object.assign({}, sEntry);
         sEntry.viaTerritory = true;
@@ -223,20 +293,17 @@
         return sEntry;
       }
     }
-
     return { cat: 'no_data' };
   }
 
   function fillFor(feature) {
-    if (!selectedCode) return NEUTRAL_FILL;
+    if (!passportCode) return NEUTRAL_FILL;
     var entry = resolveEntry(feature);
     return CATEGORY_COLOR[entry.cat] || CATEGORY_COLOR.no_data;
   }
 
-  // Guard against corrupt/degenerate geometries (e.g. a bad topology arc) that would
-  // otherwise render as a giant shape covering the whole map. Legitimate countries that
-  // straddle the antimeridian (Fiji, Kiribati) are wide but not tall, so this only
-  // catches genuinely broken paths.
+  // Guard against corrupt/degenerate geometries (see app.js for the full story
+  // — a bad topology arc can render as a giant shape covering the whole map).
   var renderableFeatures = geojson.features.filter(function (f) {
     var b = pathGen.bounds(f);
     var w = b[1][0] - b[0][0];
@@ -255,24 +322,27 @@
     })
     .on('mouseleave', function () {
       tooltip.hidden = true;
+    })
+    .on('click', function (event, d) {
+      var code = destCodeForFeature(d);
+      if (code) selectDestination(code);
     });
 
   function recolorMap() {
     paths.attr('fill', fillFor);
   }
 
-  function resolveEntryForCode(code) {
-    if (!selectedCode) return null;
-    return lookupVisa(selectedCode, code) || { cat: 'no_data' };
+  function updateHighlight() {
+    paths.classed('highlighted', function (d) {
+      return destinationCode && destCodeForFeature(d) === destinationCode;
+    });
   }
 
-  function tooltipHTML(name, entry, extraHTML) {
+  function tooltipHTML(name, entry) {
     var html = '<strong>' + name + '</strong>';
-
-    if (selectedCode) {
+    if (passportCode) {
       var label = CATEGORY_LABEL[entry.cat] || CATEGORY_LABEL.no_data;
       html += '<div>' + label + '</div>';
-
       if (entry.cat === 'visa_free' && entry.days) {
         html += '<div class="tip-days">Up to ' + entry.days + ' days</div>';
       }
@@ -282,8 +352,6 @@
     } else {
       html += '<div class="tip-days">Select a passport to see requirements</div>';
     }
-
-    if (extraHTML) html += extraHTML;
     return html;
   }
 
@@ -291,8 +359,6 @@
     var rect = mapArea.getBoundingClientRect();
     var x = event.clientX - rect.left + 14;
     var y = event.clientY - rect.top + 14;
-
-    // Keep tooltip inside the visible area
     var maxX = rect.width - 230;
     var maxY = rect.height - 90;
     tooltip.style.left = Math.min(x, Math.max(maxX, 0)) + 'px';
@@ -305,6 +371,72 @@
     tooltip.innerHTML = tooltipHTML(name, resolveEntry(feature));
     tooltip.hidden = false;
     positionTooltip(event);
+  }
+
+  // ── Detail card ─────────────────────────────────────────────
+  var detailCard = document.getElementById('detailCard');
+  var detailCardTitle = document.getElementById('detailCardTitle');
+  var detailCardBody = document.getElementById('detailCardBody');
+  var detailCardClose = document.getElementById('detailCardClose');
+
+  function selectDestination(code) {
+    destinationCode = code;
+    destinationControl.setValue(code);
+    updateHighlight();
+    showDetailFor(code);
+  }
+
+  detailCardClose.addEventListener('click', function () {
+    detailCard.hidden = true;
+    destinationCode = null;
+    destinationControl.clear();
+    updateHighlight();
+  });
+
+  function flagSpan(code) {
+    return '<span class="fi fi-' + code.toLowerCase() + '" aria-hidden="true"></span>';
+  }
+
+  function showDetailFor(destCode) {
+    if (!passportCode) return;
+    var destName = CODE_TO_NAME[destCode] || destCode;
+    var passportName = CODE_TO_NAME[passportCode] || passportCode;
+    var entry = lookupVisa(passportCode, destCode) || { cat: 'no_data' };
+
+    detailCardTitle.innerHTML = flagSpan(passportCode) + ' ' + passportName +
+      ' → ' + flagSpan(destCode) + ' ' + destName;
+
+    var label = CATEGORY_LABEL[entry.cat] || CATEGORY_LABEL.no_data;
+    var html = '<div class="detail-category">' + label + '</div>';
+
+    if (entry.cat === 'home') {
+      html = '<div class="detail-category">This is your passport\'s home country</div>';
+    } else if (entry.cat === 'visa_free') {
+      html += entry.days
+        ? '<div class="detail-days">Up to ' + entry.days + ' days without a visa.</div>'
+        : '<div class="detail-days">No visa needed, no specific day limit given.</div>';
+    } else if (entry.cat === 'visa_on_arrival') {
+      html += '<div class="detail-days">Get your visa when you arrive — no need to apply in advance.</div>';
+    } else if (entry.cat === 'eta') {
+      html += '<div class="detail-days">Apply online for an electronic travel authorization before you fly.</div>';
+    } else if (entry.cat === 'e_visa') {
+      html += '<div class="detail-days">Apply for an e-visa online before you travel.</div>';
+    } else if (entry.cat === 'visa_required') {
+      html += '<div class="detail-days">You\'ll need to apply for a visa (often through an embassy/consulate) before you travel.</div>';
+    } else if (entry.cat === 'no_admission') {
+      html += '<div class="detail-days">Holders of this passport are not admitted.</div>';
+    } else {
+      html += '<div class="detail-days">No data available for this destination.</div>';
+    }
+
+    if (entry.cat !== 'home' && entry.cat !== 'no_data') {
+      var query = encodeURIComponent(destName + ' visa requirements for ' + passportName + ' passport holders');
+      html += '<div class="detail-note">Not an official source — always confirm with an embassy or government site.</div>';
+      html += '<a href="https://www.google.com/search?q=' + query + '" target="_blank" rel="noopener">Search official visa information →</a>';
+    }
+
+    detailCardBody.innerHTML = html;
+    detailCard.hidden = false;
   }
 
   // ── Capitals ────────────────────────────────────────────────
@@ -326,12 +458,18 @@
     .attr('class', 'capital')
     .attr('transform', function (d) { return 'translate(' + d.x + ',' + d.y + ')'; })
     .on('mousemove', function (event, d) {
-      tooltip.innerHTML = tooltipHTML(d.capital, resolveEntryForCode(d.code), '<div class="tip-days">Capital of ' + d.name + '</div>');
+      var entry = passportCode ? (lookupVisa(passportCode, d.code) || { cat: 'no_data' }) : null;
+      tooltip.innerHTML = passportCode
+        ? tooltipHTML(d.capital, entry) + '<div class="tip-days">Capital of ' + d.name + '</div>'
+        : tooltipHTML(d.capital, null);
       tooltip.hidden = false;
       positionTooltip(event);
     })
     .on('mouseleave', function () {
       tooltip.hidden = true;
+    })
+    .on('click', function (event, d) {
+      selectDestination(d.code);
     });
 
   var capitalInner = capitalG.append('g').attr('class', 'capital-inner');
@@ -369,18 +507,10 @@
   document.getElementById('zoomReset').addEventListener('click', function () {
     svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity);
   });
-  document.getElementById('fullReset').addEventListener('click', function () {
-    svg.transition().duration(300).call(zoom.transform, d3.zoomIdentity);
-    searchEl.value = '';
-    clearSearchBtn.hidden = true;
-    selectPassport(null);
-  });
 
   // ── Legend ──────────────────────────────────────────────────
   var legendEl = document.getElementById('legend');
 
-  // Counts destinations (the 199 recognized passport-index countries/territories,
-  // not the ~241 map shapes) so dependent territories don't inflate their sovereign's total.
   function computeCounts(code) {
     var counts = {};
     CATEGORY_ORDER.forEach(function (c) { counts[c] = 0; });
@@ -398,14 +528,13 @@
 
   function renderLegend() {
     legendEl.innerHTML = '';
-
-    if (!selectedCode) {
+    if (!passportCode) {
       legendEl.style.display = 'none';
       return;
     }
     legendEl.style.display = 'flex';
 
-    var counts = computeCounts(selectedCode);
+    var counts = computeCounts(passportCode);
 
     CATEGORY_ORDER.forEach(function (cat) {
       var item = document.createElement('div');
@@ -425,13 +554,6 @@
   }
 
   // ── Init ────────────────────────────────────────────────────
-  renderCountryList('');
+  updateEmptyState();
   renderLegend();
-
-  var fromHash = (location.hash || '').replace('#', '').toUpperCase();
-  var fromStorage = localStorage.getItem(STORAGE_KEY);
-  var initialCode = CODE_TO_NAME[fromHash] ? fromHash : (CODE_TO_NAME[fromStorage] ? fromStorage : null);
-  if (initialCode) {
-    selectPassport(initialCode);
-  }
 })();
